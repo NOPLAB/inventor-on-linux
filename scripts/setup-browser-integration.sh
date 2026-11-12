@@ -8,7 +8,7 @@ case "$project_dir" in *[\"\`\$\\%]*) echo 'Move the project to a path without q
 for command in xdg-mime update-desktop-database; do
   command -v "$command" >/dev/null || { echo "Missing command: $command" >&2; exit 1; }
 done
-test -f "$WINEPREFIX/user.reg" || { echo 'Initialize the dedicated bottle first.' >&2; exit 1; }
+test -f "$WINEPREFIX/user.reg" || { echo 'Initialize the dedicated Wine prefix first (init-prefix).' >&2; exit 1; }
 applications="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 mkdir -p "$applications"
 cat > "$applications/inventor-on-linux-auth.desktop" <<DESKTOP

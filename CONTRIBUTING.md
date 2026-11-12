@@ -1,6 +1,8 @@
-# 開発・検証
+# Development and validation
 
-独自コードへの変更はMITで提供してください。Wineパッチの変更はLGPL-2.1-or-laterで扱い、出典・著作権表示を保持してください。Autodeskのファイルやアカウント情報は追加しないでください。
+Contribute changes to original project code under the MIT license. Changes to
+Wine patches are LGPL-2.1-or-later; retain their provenance and copyright notices.
+Do not add Autodesk files or account information.
 
 ```bash
 nix flake check -L --cores 8 --max-jobs 1
@@ -8,9 +10,14 @@ nix build .#inventor-on-linux --out-link result-package
 ./result-package/bin/inventor-on-linux --help
 ```
 
-`flake check`はシェル/Python構文と、パッケージのヘルプ・設定・メディア準備のCLIを確認します。InventorのGUI、認証、解析処理を自動テストするものではありません。通常のCIでは構文を確認し、重いWineビルドを含むNix検証は手動起動にしています。
+`flake check` validates shell and Python syntax, package help, configuration,
+prefix selection, refusal to initialize a nonempty prefix, and the media
+preparation CLI. It does not automatically test the Inventor GUI, authentication,
+or analysis. Regular CI checks syntax; Nix checks, which can require expensive
+Wine builds, run through a manual workflow trigger.
 
-Wine APIの回帰確認には、ビルド済みの`result`（`nix build .#runner`）と開発用Xセッションを使います。
+For Wine API regression checks, use the built `result` runner (`nix build
+.#runner`) and a development X session:
 
 ```bash
 ./scripts/test-api.sh
@@ -18,8 +25,15 @@ Wine APIの回帰確認には、ビルド済みの`result`（`nix build .#runner
 ./scripts/test-msxml-attribute.sh
 ```
 
-これらは`test-prefix/`を使用します。`test-inventor-typelib.sh`にはInventor導入済みの診断用Prefixを`INVENTOR_PREFIX`で明示してください。普段の作業用Prefixでテストを実行しないでください。`tests/inventor-commands.c`や`wine-dialog.c`はドキュメントやダイアログを操作する開発ツールです。
+These scripts use `test-prefix/`. For `test-inventor-typelib.sh`, explicitly set
+`INVENTOR_PREFIX` to a diagnostic prefix with Inventor installed. Do not run tests
+against your working prefix. Development tools such as `tests/inventor-commands.c`
+and `tests/wine-dialog.c` can manipulate documents and dialogs.
 
-パッチ追加時は`flake.nix`の対象DLL・アーキテクチャを確認し、最小の再現ケースと検証結果を追加してください。メッシュ生成成功と解析結果の正確性は別々に報告してください。
+When adding a patch, check the target DLLs and architectures in `flake.nix`, and
+include a minimal reproduction and validation results. Report successful mesh
+generation separately from the accuracy of analysis results.
 
-公開前には`git diff --cached --stat`で対象を確認してください。`build/`、`logs/`、`test-prefix/`、`config.local.sh`、ダンプ、CADモデル、インストーラーは配布対象ではありません。
+Before publishing, inspect the staged files with `git diff --cached --stat`.
+`build/`, `logs/`, `test-prefix/`, `config.local.sh`, crash dumps, CAD models, and
+installers are not distribution artifacts.

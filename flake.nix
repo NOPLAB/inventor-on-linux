@@ -194,6 +194,7 @@
       inventor = pkgs.callPackage ./nix/package.nix {
         inherit runner mediaTools;
         fonts = pkgs.ipaexfont;
+        dxvk = pkgs.dxvk.bin;
       };
     in {
       packages.${system} = {
@@ -202,6 +203,7 @@
         inherit runner;
         wintrust = trustDlls;
         fonts = pkgs.ipaexfont;
+        dxvk = pkgs.dxvk.bin;
         media-tools = mediaTools;
         window-shape = shapeFix;
       };
@@ -232,6 +234,19 @@
           grep -q 'prepare-media' help.txt
           ${inventor}/bin/inventor-on-linux paths > paths.txt
           grep -F "state=$HOME/.local/state/inventor-on-linux" paths.txt
+          grep -F "prefix=$HOME/.local/share/inventor-on-linux/prefix" paths.txt
+          WINEPREFIX="$HOME/custom-prefix" ${inventor}/bin/inventor-on-linux paths > custom-paths.txt
+          grep -F "prefix=$HOME/custom-prefix" custom-paths.txt
+          INVENTOR_PREFIX="$HOME/explicit-prefix" WINEPREFIX="$HOME/custom-prefix" ${inventor}/bin/inventor-on-linux paths > explicit-paths.txt
+          grep -F "prefix=$HOME/explicit-prefix" explicit-paths.txt
+          mkdir -p "$HOME/existing-prefix"
+          echo sentinel > "$HOME/existing-prefix/keep"
+          if INVENTOR_PREFIX="$HOME/existing-prefix" ${inventor}/bin/inventor-on-linux init-prefix > refusal.txt 2>&1; then
+            echo 'init-prefix unexpectedly accepted a nonempty directory' >&2
+            exit 1
+          fi
+          grep -q 'Refusing to initialize a nonempty prefix' refusal.txt
+          test "$(cat "$HOME/existing-prefix/keep")" = sentinel
           ${inventor}/bin/inventor-on-linux prepare-media --help
           # URI handlers are launched directly by the desktop, without the wrapper.
           bash -c 'set -eu; source ${inventor}/share/inventor-on-linux/scripts/common.sh; test "$INVENTOR_RUNNER" = "${runner}"; test "$state_dir" = "$HOME/.local/state/inventor-on-linux"'

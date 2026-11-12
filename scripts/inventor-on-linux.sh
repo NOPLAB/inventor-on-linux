@@ -10,6 +10,8 @@ case "$command" in
 Usage: inventor-on-linux [COMMAND] [ARGUMENTS...]
 
 Commands:
+  init-prefix        Create a new dedicated 64-bit Wine prefix with Windows 10 and DXVK
+  setup-dxvk         Install DXVK into an initialized prefix (close its apps first)
   launch             Start Identity Manager, licensing service and Inventor (default)
   prepare-media DIR  Copy extracted official media and fetch verified payloads
   install            Install prepared media; accepts --dry-run
@@ -24,12 +26,14 @@ Commands:
   --version          Print version
 
 Configuration: $config_file
-Use a dedicated initialized Bottles prefix. Autodesk software is not included.
+Use a dedicated Wine prefix; Bottles is optional. Autodesk software is not included.
 HELP
     ;;
   --version) echo 'inventor-on-linux 0.1.0';;
   paths) printf 'prefix=%s\nstate=%s\nrunner=%s\n' "$WINEPREFIX" "$state_dir" "$INVENTOR_RUNNER";;
   launch) exec "$project_dir/scripts/launch-inventor.sh" "$@";;
+  init-prefix) exec "$project_dir/scripts/init-prefix.sh" "$@";;
+  setup-dxvk) exec "$project_dir/scripts/setup-dxvk.sh" "$@";;
   prepare-media) exec "$project_dir/scripts/prepare-media.sh" "$@";;
   install) exec "$project_dir/scripts/install-cached-media.sh" "$@";;
   register-runner) exec "$project_dir/scripts/register-bottles-runner.sh" "$@";;

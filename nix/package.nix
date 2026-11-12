@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 { lib, stdenvNoCC, makeWrapper, bash, coreutils, findutils, gnugrep
-, gnused, glibc, xdg-utils, desktop-file-utils, runner, mediaTools, fonts }:
+, gnused, glibc, xdg-utils, desktop-file-utils, runner, mediaTools, fonts, dxvk }:
 stdenvNoCC.mkDerivation {
   pname = "inventor-on-linux";
   version = "0.1.0";
@@ -23,6 +23,7 @@ stdenvNoCC.mkDerivation {
     export INVENTOR_RUNNER="''${INVENTOR_RUNNER:-${runner}}"
     export INVENTOR_MEDIA_TOOLS="''${INVENTOR_MEDIA_TOOLS:-${mediaTools}}"
     export INVENTOR_FONTS="''${INVENTOR_FONTS:-${fonts}}"
+    export INVENTOR_DXVK="''${INVENTOR_DXVK:-${dxvk}}"
     export INVENTOR_STATE_DIR="''${INVENTOR_STATE_DIR:-''${XDG_STATE_HOME:-$HOME/.local/state}/inventor-on-linux}"
     export PATH="${lib.makeBinPath [ bash coreutils findutils gnugrep gnused glibc.bin xdg-utils desktop-file-utils ]}:$PATH"
     DEFAULTS
@@ -32,6 +33,7 @@ stdenvNoCC.mkDerivation {
       --set-default INVENTOR_RUNNER ${runner} \
       --set-default INVENTOR_MEDIA_TOOLS ${mediaTools} \
       --set-default INVENTOR_FONTS ${fonts} \
+      --set-default INVENTOR_DXVK ${dxvk} \
       --run 'export INVENTOR_STATE_DIR="''${INVENTOR_STATE_DIR:-''${XDG_STATE_HOME:-$HOME/.local/state}/inventor-on-linux}"' \
       --prefix PATH : ${lib.makeBinPath [ bash coreutils findutils gnugrep gnused glibc.bin xdg-utils desktop-file-utils ]}
     cat > "$out/share/applications/inventor-on-linux.desktop" <<DESKTOP

@@ -54,7 +54,9 @@ def sha256(path):
             h.update(block)
     return h.hexdigest()
 
-prefix = Path(os.environ.get("INVENTOR_PREFIX", Path.home() / ".local/share/bottles/bottles/Inventor2027"))
+data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
+prefix = Path(os.environ.get("INVENTOR_PREFIX") or os.environ.get("WINEPREFIX")
+              or data_home / "inventor-on-linux/prefix")
 existing_root = prefix / "drive_c/Autodesk/WI"
 existing = {}
 for p in existing_root.rglob("pkg.*.tar*"):

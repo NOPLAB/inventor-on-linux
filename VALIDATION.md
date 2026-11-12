@@ -1,26 +1,48 @@
-# 検証記録
+# Validation record
 
-2026-11-12時点。NixOS / KDE / XWayland / Wine Staging 11.8、Inventor Professional 2027 日本語版。
-単一環境での検証であり、他のディストリビューションやGPUでは未確認です。
+As of 2026-11-12, tested on NixOS / KDE / XWayland / Wine Staging 11.8 with
+Autodesk Inventor Professional 2027, Japanese edition. These results come from a
+single environment; other distributions and GPUs have not been tested.
 
-| 項目 | 結果 |
+| Feature | Result |
 | --- | --- |
-| 公式マニフェストから導入 | 42アーカイブのSHA-256照合、27工程完了 |
-| 正規Autodesk ID認証 | LinuxブラウザとIdentity Manager間のコールバック成功 |
-| 日本語UI、スケッチ、押し出し | 確認済み |
-| 環境 → 応力解析 | 起動時のクラッシュを修正、表示確認 |
-| 新規スタディのメッシュ | ノード2,199・要素1,258を生成・表示 |
-| 構造解析のソルバー、結果の正確性 | **未検証** |
-| ウィンドウ拡大・最大化 | X11 Shape補正で表示追従を確認 |
-| Content Center、2027.2更新 | 未導入・未検証 |
+| Installation from official manifests | SHA-256 verified for 42 archives; 27 installation steps completed |
+| Autodesk ID authentication | Callback between the native Linux browser and Identity Manager succeeded |
+| Japanese UI, sketching, extrusion | Verified |
+| Environments → Stress Analysis | Startup crash fixed; environment displayed successfully |
+| Mesh generation in a new study | Generated and displayed 2,199 nodes and 1,258 elements |
+| Structural analysis solver and result accuracy | **Not verified** |
+| Window resizing and maximization | Display followed window size after the X11 Shape fix |
+| Content Center and the 2027.2 update | Not installed or tested |
 
-回帰確認用: `scripts/test-api.sh`（未署名ファイルとの比較）、
-`test-actctx.sh`（マニフェストのスレッドモデル）、`test-msxml-attribute.sh`
-（XML 3/6の属性追加・置換、4ケース）、`test-inventor-typelib.sh`（導入済みInventorが必要）。
-テスト用Prefixを指定し、実作業用Prefixで診断を実行しないでください。
+Regression checks include `scripts/test-api.sh` (comparison with an unsigned
+file), `scripts/test-actctx.sh` (manifest threading models),
+`scripts/test-msxml-attribute.sh` (four cases covering attribute insertion and
+replacement in XML 3/6), and `scripts/test-inventor-typelib.sh` (requires an
+Inventor installation). Use a test prefix; do not run diagnostics against your
+working prefix.
 
-MSXML修正前に作成したスタディは数値設定がゼロで保存されている場合があります。
-新規スタディを作り、拘束・荷重も設定し直してください。
+Studies created before the MSXML fix may have numeric settings saved as zero.
+Create a new study and recreate its constraints and loads.
 
-`tests/`のCOM操作・ダイアログ操作プログラムは開発用です。
-ドキュメントの保存・変更やダイアログ操作を行う機能があり、通常の導入には不要です。
+The COM and dialog manipulation programs in `tests/` are development tools. They
+can save or modify documents and manipulate dialogs; they are not needed for a
+normal installation.
+
+## Standalone Wine prefix setup
+
+Tested separately on 2026-11-12 using the packaged CLI and a new temporary
+prefix, without Bottles or changes to the working Inventor prefix:
+
+- `init-prefix` completed with Wine Staging 11.8 and DXVK 2.7.1.
+- Both `d3d11.dll` and `dxgi.dll` matched the pinned x64 payloads in `system32`
+  and the x86 payloads in `syswow64`; original DLL backups were present.
+- Registry queries confirmed Windows 10 and `native,builtin` overrides for
+  `d3d11` and `dxgi`.
+- `nix flake check` passed, including prefix selection and refusal to initialize
+  a nonempty directory without modifying its contents.
+
+A full clean Inventor installation, browser sign-in, and GUI session in this new
+standalone prefix have not been tested. The Inventor feature results above were
+obtained in the existing Bottles-managed prefix. Other frontends and GPUs remain
+untested.

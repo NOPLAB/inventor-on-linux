@@ -8,7 +8,8 @@ if test -f "$project_dir/config.local.sh"; then source "$project_dir/config.loca
 if test -f "$project_dir/package-defaults.sh"; then source "$project_dir/package-defaults.sh"; fi
 export INVENTOR_STATE_DIR="${INVENTOR_STATE_DIR:-$project_dir}"
 state_dir="$INVENTOR_STATE_DIR"
-export INVENTOR_PREFIX="${INVENTOR_PREFIX:-${XDG_DATA_HOME:-$HOME/.local/share}/bottles/bottles/Inventor2027}"
+export INVENTOR_PREFIX="${INVENTOR_PREFIX:-${WINEPREFIX:-${XDG_DATA_HOME:-$HOME/.local/share}/inventor-on-linux/prefix}}"
+case "$INVENTOR_PREFIX" in /*) ;; *) echo 'Use an absolute Wine prefix path.' >&2; exit 2 ;; esac
 export WINEPREFIX="$INVENTOR_PREFIX"
 export INVENTOR_WINTRUST_PRESERVE_FILE_ERRORS=1
 export INVENTOR_RUNNER="${INVENTOR_RUNNER:-$project_dir/result}"
@@ -29,4 +30,8 @@ identity_exe() {
 media_tools() {
   if test -n "${INVENTOR_MEDIA_TOOLS:-}"; then printf '%s\n' "$INVENTOR_MEDIA_TOOLS";
   else nix build "$project_dir#media-tools" --no-link --print-out-paths; fi
+}
+dxvk_tools() {
+  if test -n "${INVENTOR_DXVK:-}"; then printf '%s\n' "$INVENTOR_DXVK";
+  else nix build "$project_dir#dxvk" --no-link --print-out-paths; fi
 }

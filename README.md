@@ -1,101 +1,152 @@
 # inventor-on-linux
 
-Autodesk Inventor Professional 2027 日本語版をLinuxで動かすための実験的なWine Runnerと導入ツールです。NixでWine Staging 11.8を固定し、必要なDLLの修正をビルドします。Bottlesの専用環境で利用します。
+An experimental Wine runner and setup toolkit for **Autodesk Inventor Professional 2027, Japanese edition**, on Linux. Nix pins Wine Staging 11.8 and builds the compatibility patches. You can use a standalone Wine prefix or a dedicated prefix managed by Bottles or another Wine frontend. **Bottles is optional.**
 
-日本語UI、Autodesk IDサインイン、スケッチ・押し出し、応力解析環境、新規スタディのメッシュ生成を確認しました。**構造解析の計算結果は未検証です。** 対応状況は[検証記録](VALIDATION.md)を参照してください。Autodesk公式の対応製品ではありません。
+The Japanese UI, Autodesk ID sign-in, sketching, extrusion, the stress analysis environment, and mesh generation in a new study have been tested. **Solver execution and the accuracy of analysis results have not been verified.** See [VALIDATION.md](VALIDATION.md) for the tested configuration. This project is not supported by Autodesk.
 
-## Nixパッケージとして使う
+## Requirements
 
-`nix run . -- --help`、`nix build .#inventor-on-linux`に対応しています。別のflakeの`inputs`、NixOSの`environment.systemPackages`、Home Managerの`home.packages`からも参照できます。公開URLの指定例、Output一覧、パッケージ版の設定・保存先は[Nix利用手順](nix/README.md)を参照してください。
+- x86_64 Linux with Nix and `flakes` / `nix-command` enabled. Testing has used NixOS, KDE, and XWayland; native Wayland is untested.
+- A Vulkan-capable GPU and working drivers. The standalone setup installs DXVK for Direct3D 11. The existing Bottles configuration also used VKD3D; the standalone setup does not install VKD3D or claim Direct3D 12 support.
+- Official Inventor 2027 installation media, an Autodesk ID, and a valid entitlement.
+- A native browser, `xdg-open`, `xdg-mime`, `update-desktop-database`, internet access, and enough disk space for Wine builds and installation media. The Nix package supplies the desktop integration utilities.
 
-ソースからRunner単体を作る場合は、以下の`nix build .#runner`を使用します。
+Inventor binaries, installation media, licenses, and credentials are not included. The standalone initialization path is covered separately from the existing Bottles validation; a complete clean installation and Inventor GUI session on that path still require validation.
 
-## 必要なもの
+## Install the toolkit
 
-- x86_64 Linux、Nix（flakes / nix-commandを有効化）、Bottles。検証環境はNixOS / KDE / XWaylandです。
-- Vulkan対応GPUとドライバ。BottlesのDXVK / VKD3Dを利用した環境で検証しています。ネイティブWaylandは未検証です。
-- 正式に入手したInventor 2027のインストールメディア、Autodesk IDと有効な利用資格。
-- ネイティブのブラウザ、`xdg-open` / `xdg-mime` / `update-desktop-database`、インターネット接続と十分な空き容量。初回のWineビルドには時間とディスク容量が必要です。
+```bash
+git clone https://github.com/NOPLAB/inventor-on-linux.git
+cd inventor-on-linux
+nix build .#inventor-on-linux --out-link result-package
+./result-package/bin/inventor-on-linux --help
+```
 
-このリポジトリにはInventor本体、ライセンス、インストールメディアを含めません。
+The following examples assume the CLI is on your `PATH`:
 
-## ビルドと設定
+```bash
+nix profile add .#inventor-on-linux
+```
+
+Alternatively, run `./result-package/bin/inventor-on-linux` or `nix run . --` in place of `inventor-on-linux`. See [the Nix package guide](nix/README.md) for flake inputs, NixOS, Home Manager, and individual outputs.
+
+## Configure a dedicated Wine prefix
+
+The default prefix is `$XDG_DATA_HOME/inventor-on-linux/prefix`, or `~/.local/share/inventor-on-linux/prefix`. `INVENTOR_PREFIX` overrides it; otherwise an existing `WINEPREFIX` environment variable is respected.
+
+If you used the previous Bottles-based default, explicitly configure that existing bottle's path to keep using it.
+
+For persistent settings, create `~/.config/inventor-on-linux/config.sh` (`XDG_CONFIG_HOME` is respected):
+
+```bash
+export INVENTOR_PREFIX="${INVENTOR_PREFIX:-$HOME/.local/share/inventor-on-linux/prefix}"
+# Optional: executable name or absolute path, without arguments.
+# export INVENTOR_BROWSER=firefox
+```
+
+Use an absolute prefix path. Keep this setting in the configuration file when using browser sign-in: desktop callbacks do not inherit environment variables from the launching terminal. `INVENTOR_CONFIG` selects an alternate configuration file for CLI invocations; desktop callbacks must also be able to find the settings in the default configuration file.
+
+```bash
+inventor-on-linux paths
+inventor-on-linux init-prefix
+```
+
+`init-prefix` creates a 64-bit prefix using the runner's matching stock Wine, selects Windows 10, and installs both architectures of DXVK from the pinned Nixpkgs package. It refuses to initialize a nonempty directory or a symbolic link. Run it from a graphical desktop session. After initialization, commands use the patched runner directly; no Wine frontend is needed.
+
+To use an existing dedicated 64-bit prefix from Bottles, Lutris, or another frontend, set `INVENTOR_PREFIX` to its absolute path and skip `init-prefix`. Close that prefix's applications before installing DXVK if needed:
+
+```bash
+inventor-on-linux setup-dxvk
+```
+
+Use the patched runner for installation and launch. A frontend's normal system Wine will not provide these compatibility fixes. The CLI does not read frontend settings such as environment variables or DLL overrides; put required settings in the toolkit configuration. Back up an existing prefix before changing it.
+
+### Optional Bottles integration
+
+Create a dedicated 64-bit bottle with Windows 10 and configure DXVK / VKD3D in Bottles. Set `INVENTOR_PREFIX` to its actual path; Flatpak Bottles uses different paths and sandbox permissions.
+
+```bash
+inventor-on-linux register-runner
+```
+
+Restart Bottles and select `inventor-unsafe-11.8` for this bottle. Registration refuses to overwrite an existing runner. To update, close the applications, move the previous runner aside, and register again. The copied runner references the local Nix store and is specific to this machine; keep its Nix package or build output rooted.
+
+## Prepare official media and install
+
+Obtain an extracted Autodesk installation image containing `setup.xml` and `manifest/app.*.xml`. The small `webinstall.exe` alone is not a complete image. An Autodesk installer may extract the image under `drive_c/Autodesk/WI/.../INVPROSA_2027_ja-JP` in a Wine prefix. Obtain media through Autodesk's official distribution methods.
+
+```bash
+inventor-on-linux prepare-media /absolute/path/to/extracted-media
+inventor-on-linux install --dry-run
+inventor-on-linux install
+```
+
+The toolkit copies the image to `build/install-media` under its state directory. Payloads referenced by the manifests are downloaded from Autodesk distribution servers and checked against their sizes and SHA-256 hashes. Downloads are cached in `build/payloads`. Run `prepare-media` without an argument to resume. Completed installation steps are recorded in the prefix's `.odis-install-state.json`.
+
+The package stores media, logs, and backups in `$XDG_STATE_HOME/inventor-on-linux` (default `~/.local/state/inventor-on-linux`). Set `INVENTOR_STATE_DIR` to change this. Scripts run directly from the source tree default to the repository's `build/` and `logs/` directories.
+
+Installation targets an initialized dedicated prefix, installs the Japanese edition, and skips Content Center. The 2027.2 update has not been tested. A successful installation in the original environment does not guarantee every clean installation will complete.
+
+After installation, before launching Inventor:
+
+```bash
+inventor-on-linux repair-vc-runtime
+inventor-on-linux disable-addins
+inventor-on-linux setup-fonts
+inventor-on-linux setup-browser
+inventor-on-linux launch
+```
+
+VC runtime repair uses Microsoft VC++ 14.50.35719 from the installation cache and stops if the required CAB files are missing. SharedViews and InteractiveTutorial are moved aside because they crash under Wine Mono. Japanese font setup installs IPAex fonts from Nix. Save your work and restart Inventor if it is already running.
+
+## Sign in and launch
+
+`launch` starts Identity Manager and the real Autodesk Licensing Service, then Inventor. It creates the RealDWG initialization XML if missing. Set `INVENTOR_WINE_USER` if the Windows profile name differs from your Linux username.
+
+`setup-browser` registers Linux handlers for `adskidmgr:` and `adsk.idmgr:` and configures WineBrowser in the selected prefix. Choose Autodesk ID sign-in, authenticate in the native browser, and allow the browser to open the callback. Run `setup-browser` again after moving the source tree or updating the Nix package so the desktop entry uses the current path. Callback URIs and authentication codes are not written to the callback log.
+
+The default browser is Firefox when available, otherwise `xdg-open`. `INVENTOR_BROWSER` selects another executable without command-line arguments. Authentication and licensing are handled by Autodesk's software.
+
+## Compatibility changes and limitations
+
+- **WinVerifyTrust:** BLOB verification is treated as successful. The toolkit sets `INVENTOR_WINTRUST_PRESERVE_FILE_ERRORS=1` to retain normal file verification errors. **Removing this variable also turns normal file verification failures into success. This weakens signature verification; use a dedicated prefix.** Patched DLLs are copied into the prefix and remain there after exit.
+- **comctl32 / ntdll / rpcrt4 / combase:** compatibility fixes for status bar painting, activation contexts, and COM stubs.
+- **oleaut32:** fixes Inventor type library metadata handling to avoid a crash when opening stress analysis.
+- **msxml3 / msxml6:** changes the return value of `NamedNodeMap.setNamedItem` to preserve numeric mesh settings. Recreate studies made before this fix, including their constraints and loads.
+- **X11 window helper:** clears a stale rectangular window mask when resizing or maximizing the main window. Set `INVENTOR_WINDOW_SHAPE_FIX=0` to disable automatic startup; `pkill -x inventor-shape` stops an existing helper.
+
+For licensing installation failures, `repair-licensing` only proceeds when logs contain both `1053` and `LIC-INST-ERROR-69009748`, and the actual licensing service executable exists. Use it only after diagnosing that specific installation timeout:
+
+```bash
+inventor-on-linux repair-licensing
+```
+
+## Use scripts from the checkout
+
+The same commands are available without installing the CLI package:
 
 ```bash
 nix build .#runner -L --cores 8 --max-jobs 1
 cp config.example.sh config.local.sh
+# Edit config.local.sh to choose a dedicated prefix.
+./scripts/inventor-on-linux.sh init-prefix
+./scripts/inventor-on-linux.sh prepare-media /absolute/path/to/extracted-media
 ```
 
-`config.local.sh`で`INVENTOR_PREFIX`を専用Bottleの絶対パスに設定してください。既定値は`~/.local/share/bottles/bottles/Inventor2027`です。Flatpak版Bottlesではパスやサンドボックスからのアクセスが異なるため、実際のパスを指定してください。`INVENTOR_PREFIX`環境変数でも指定できます。
+`config.local.sh` is ignored by Git and is also read by the source scripts. Other entry scripts remain available, including `launch-inventor.sh` and `install-cached-media.sh`. The checkout resolves media tools, fonts, and DXVK through the pinned flake as needed.
 
-Bottlesで専用の64bit Bottleを作成・初期化し、Windows 10、DXVK / VKD3Dを設定します。他のアプリが入ったBottleを流用しないでください。
+## Restore stock Wine
+
+Save your work, close Inventor, and explicitly name the prefix to restore:
 
 ```bash
-./scripts/register-bottles-runner.sh
+inventor-on-linux restore-prefix /absolute/path/to/dedicated-prefix
 ```
 
-Bottlesを開き直し、専用BottleのRunnerに`inventor-unsafe-11.8`を選択します。登録先が既にある場合、スクリプトは上書きせず終了します。更新時はアプリを閉じて既存Runnerを別名で退避してから再登録してください。コピーしたRunnerもNixストアを参照するため、そのPC専用です。ビルドの`result`リンクを保持してください。
+This stops Wine processes belonging to that prefix and restores backed-up `wintrust.dll` files. Select a stock runner in your frontend as well, if applicable. Font settings, DXVK installation (original DLLs saved as `.inventor-dxvk-original`), VC runtime repair, and disabled add-ins remain separate changes. Restore a prefix backup if you need to undo every change.
 
-## メディアの準備と導入
+## Contributing and licenses
 
-Autodeskのインストーラーで展開されたディレクトリ（`setup.xml`と`manifest/app.*.xml`を含むインストールイメージ）を用意します。小さなwebinstall.exe自体は完全なメディアではありません。展開済みディレクトリの例は、Bottle内の`drive_c/Autodesk/WI/.../INVPROSA_2027_ja-JP`です。入手方法はAutodeskの提供する手段に従ってください。
+See [CONTRIBUTING.md](CONTRIBUTING.md) for validation commands. Logs, models, media, and local settings are excluded from Git. Remove authentication URLs, tokens, and serial numbers from bug reports.
 
-```bash
-./scripts/prepare-media.sh /absolute/path/to/extracted-media
-./scripts/install-cached-media.sh --dry-run
-./scripts/install-cached-media.sh
-```
-
-メディアは`build/install-media`へコピーします。マニフェストが参照するペイロードは公式配布先から取得し、サイズとSHA-256を照合します。ダウンロードは`build/payloads`へ保存します。再開時の準備コマンドは引数なしで実行できます。導入済み工程はPrefix内の`.odis-install-state.json`で管理します。
-
-この導入ツールは準備済みの専用Prefixへのインストールを許可します。Content Centerを省略し、日本語の本体を導入する設定です。2027.2更新の適用は検証していません。新規環境での全工程を自動保証するものではありません。
-
-終了後、Inventorを起動する前に次を実行します。
-
-```bash
-./scripts/repair-vc-runtime.sh
-./scripts/disable-sharedviews.sh
-./scripts/setup-japanese-fonts.sh
-./scripts/setup-browser-integration.sh
-./scripts/launch-inventor.sh
-```
-
-VCランタイム修復は導入キャッシュのMicrosoft VC++ 14.50.35719を使います。該当CABがない場合は終了します。SharedViews / InteractiveTutorialはWine Monoでクラッシュするため退避します。日本語にはNixから取得したIPAexフォントを設定します。既に起動している場合は保存後に再起動してください。
-
-## サインインと起動
-
-`launch-inventor.sh`はIdentity Managerと実際のAutodesk Licensing Serviceを起動し、RealDWG初期化に必要な設定XMLがなければ作成します。Wine内ユーザー名がLinuxのユーザー名と違う場合は`INVENTOR_WINE_USER`を設定してください。
-
-ブラウザ連携はLinux側の`adskidmgr:` / `adsk.idmgr:`ハンドラーと専用PrefixのWineBrowser設定を登録します。Autodesk IDサインインを押し、ブラウザで認証後に「開く」を許可してください。プロジェクトを移動した場合は連携登録をやり直してください。コールバックURIや認証コードは専用ログに記録しません。
-
-ブラウザはFirefox、なければ`xdg-open`を使います。`config.local.sh`の`INVENTOR_BROWSER`で実行ファイルを指定できます（引数は含めません）。認証やライセンス検証を回避する機能はありません。
-
-## 変更内容と制約
-
-- WinVerifyTrust: BLOB検証を成功扱いにする回避処理。起動スクリプトは`INVENTOR_WINTRUST_PRESERVE_FILE_ERRORS=1`を設定し、通常ファイルの検証エラーを維持します。**この変数を外すと通常ファイルの失敗も成功扱いになります。署名検証を弱める実験版のため、専用Prefixに限定してください。** DLLはPrefixにコピーされ、終了後も残ります。
-- comctl32 / ntdll / rpcrt4 / combase: ステータスバー描画、アクティベーションコンテキスト、COMスタブの互換性修正。
-- oleaut32: Inventorタイプライブラリの型情報の読み取りを修正。応力解析環境の起動時クラッシュを回避します。
-- msxml3 / msxml6: `NamedNodeMap.setNamedItem`の戻り値を修正。メッシュ設定の数値が消える問題に対応します。修正前のスタディは新規作成し、拘束・荷重も設定し直してください。
-- X11補助プロセス: メインウィンドウに残る古い矩形マスクをイベントに応じて解除し、拡大・最大化時の表示欠けを補正します。起動を無効にするには`INVENTOR_WINDOW_SHAPE_FIX=0`、既存プロセスの停止には`pkill -x inventor-shape`を使います。
-
-ライセンスサービス導入で`1053`と`LIC-INST-ERROR-69009748`が同時に記録された場合に限り、`repair-licensing-install.py`が診断付きの復旧処理を提供します。通常の導入で無条件に実行しないでください。共通設定を読み込んだ環境で次を実行できます。
-
-```bash
-bash -c 'source scripts/common.sh; tools=$(media_tools); export PATH="$project_dir/result/bin:$tools/bin:$PATH"; "$tools/bin/python3" scripts/repair-licensing-install.py'
-```
-
-## 通常のWineへ戻す
-
-保存してInventorを閉じ、対象Prefixを明示して実行します。このコマンドは対象PrefixのWineプロセスを終了し、バックアップしたwintrust.dllを戻します。
-
-```bash
-./scripts/restore-prefix.sh /absolute/path/to/dedicated-prefix
-```
-
-Bottles側のRunnerも通常版に戻してください。フォント設定、VCランタイム、アドインの退避は別の変更として残ります。完全に戻す必要がある場合は、作業前に保存したBottleのバックアップを復元してください。
-
-## 開発とライセンス
-
-[CONTRIBUTING.md](CONTRIBUTING.md)に検証手順を記載しています。ログ・モデル・メディア・個別設定はGit管理から除外します。報告時も認証URL、トークン、シリアル番号を含めないでください。
-
-独自コードは[MIT](LICENSE)。**Wineを変更するパッチはLGPL-2.1-or-later**です。取り込んだ導入ツールのMIT表記も保持しています。詳細は[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)と[パッチの出典](patches/UPSTREAM.md)を参照してください。
+Original toolkit code is licensed under [MIT](LICENSE). **Patches modifying Wine are LGPL-2.1-or-later.** The imported installation tools retain their MIT notices. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [patch provenance](patches/UPSTREAM.md).

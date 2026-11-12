@@ -7,7 +7,9 @@ import importlib.util
 import os
 
 project = Path(__file__).resolve().parent.parent
-prefix = Path(os.environ.get("INVENTOR_PREFIX", Path.home() / ".local/share/bottles/bottles/Inventor2027"))
+data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
+prefix = Path(os.environ.get("INVENTOR_PREFIX") or os.environ.get("WINEPREFIX")
+              or data_home / "inventor-on-linux/prefix")
 state = Path(os.environ.get("INVENTOR_STATE_DIR", project))
 logs = list((prefix / "drive_c/users").glob("*/AppData/Local/Temp/installbuilder_installer*.log"))
 diagnosed = [p for p in logs if "LIC-INST-ERROR-69009748" in p.read_text(errors="replace")

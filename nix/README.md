@@ -1,18 +1,20 @@
-# Nixからの利用
+# Using the Nix package
 
-対応するsystemは`x86_64-linux`です。公開URLが決まるまでは、ローカルのflakeを次のように参照できます。
+The supported system is `x86_64-linux`. Run or install the public flake:
 
 ```bash
-nix run /absolute/path/to/inventor-on-linux -- --help
-nix build /absolute/path/to/inventor-on-linux#inventor-on-linux
-nix profile add /absolute/path/to/inventor-on-linux#inventor-on-linux
+nix run github:NOPLAB/inventor-on-linux -- --help
+nix build github:NOPLAB/inventor-on-linux#inventor-on-linux
+nix profile add github:NOPLAB/inventor-on-linux#inventor-on-linux
 ```
 
-公開後はパスを`github:OWNER/inventor-on-linux`へ置き換えてください。`OWNER`は公開先のアカウント名です。
+Use `.` or an absolute checkout path instead of `github:NOPLAB/inventor-on-linux` to use local changes.
+
+## NixOS and Home Manager
 
 ```nix
 {
-  inputs.inventor-on-linux.url = "github:OWNER/inventor-on-linux";
+  inputs.inventor-on-linux.url = "github:NOPLAB/inventor-on-linux";
 
   outputs = { self, nixpkgs, inventor-on-linux, ... }: {
     nixosConfigurations.my-host = nixpkgs.lib.nixosSystem {
@@ -27,31 +29,40 @@ nix profile add /absolute/path/to/inventor-on-linux#inventor-on-linux
 }
 ```
 
-既存のflakeでは`inputs`と`environment.systemPackages`へ該当部分を追加してください。Home Managerでも`home.packages`から同じパッケージを参照できます。`overlays.default`も提供しています。Overlayを使った場合も、Runnerは検証済みのNixpkgsに固定されます。Wine DLLのABIを揃えるため、無条件に`inputs.nixpkgs.follows`を設定しないでください。
+Add the input and package to your existing flake. Home Manager can reference the same package in `home.packages`. An `overlays.default` output is also available. The runner stays pinned to the tested Nixpkgs revision even when using the overlay. Avoid overriding `inputs.nixpkgs.follows` without checking Wine DLL ABI compatibility.
 
-| Output | 内容 |
+## Outputs
+
+| Output | Contents |
 | --- | --- |
-| `packages.x86_64-linux.default` / `inventor-on-linux` | CLI・デスクトップエントリー・Runnerと導入ツールの参照 |
-| `packages.x86_64-linux.runner` | Wine Runner単体 |
-| `packages.x86_64-linux.wintrust` | wintrust等の修正DLL（単体での起動用ではない） |
-| `packages.x86_64-linux.window-shape` | X11サイズ変更補助ツール |
-| `packages.x86_64-linux.media-tools` | Pythonと7-Zip |
-| `packages.x86_64-linux.fonts` | IPAexフォント |
-| `apps.x86_64-linux.default` / `inventor-on-linux` | `nix run`のエントリーポイント |
+| `packages.x86_64-linux.default` / `inventor-on-linux` | CLI, desktop entry, and references to the runner and setup dependencies |
+| `packages.x86_64-linux.runner` | Patched Wine runner |
+| `packages.x86_64-linux.wintrust` | Patched wintrust and related DLLs; not a standalone runner |
+| `packages.x86_64-linux.window-shape` | X11 window resize helper |
+| `packages.x86_64-linux.media-tools` | Python and 7-Zip |
+| `packages.x86_64-linux.fonts` | IPAex fonts |
+| `packages.x86_64-linux.dxvk` | DXVK 32-bit / 64-bit DLLs |
+| `apps.x86_64-linux.default` / `inventor-on-linux` | `nix run` entry point |
 
-パッケージにはInventor本体・認証情報を含みません。インストール時にネットワークからInventorを自動取得するNix derivationでもありません。ユーザーが取得したメディアの準備と導入は、コマンド実行時に行います。
+The package contains no Autodesk software or credentials. Media preparation and installation run as user commands, outside the Nix build, using official media you provide.
 
-設定は`~/.config/inventor-on-linux/config.sh`（`XDG_CONFIG_HOME`対応）に置きます。
+## Configuration and setup
+
+Put persistent configuration in `~/.config/inventor-on-linux/config.sh` (`XDG_CONFIG_HOME` is respected):
 
 ```bash
-export INVENTOR_PREFIX="${INVENTOR_PREFIX:-$HOME/.local/share/bottles/bottles/Inventor2027}"
+export INVENTOR_PREFIX="${INVENTOR_PREFIX:-$HOME/.local/share/inventor-on-linux/prefix}"
 # export INVENTOR_BROWSER=firefox
 ```
 
-パッケージ版のメディア、ログ、バックアップの保存先は`$XDG_STATE_HOME/inventor-on-linux`（既定`~/.local/state/inventor-on-linux`）です。`INVENTOR_STATE_DIR`で変更できます。`inventor-on-linux paths`で実際の値を確認してください。ソースツリーのスクリプトは従来どおりリポジトリ内の`build/`・`logs/`を使います。
+Without an explicit setting, the toolkit uses `WINEPREFIX` if set, otherwise `$XDG_DATA_HOME/inventor-on-linux/prefix` (default `~/.local/share/inventor-on-linux/prefix`). Use a dedicated 64-bit prefix. Bottles is optional; an existing frontend-managed prefix can be selected by its absolute path.
+
+Package state (media, logs, backups) lives in `$XDG_STATE_HOME/inventor-on-linux`, defaulting to `~/.local/state/inventor-on-linux`. Override it with `INVENTOR_STATE_DIR`. Source scripts default to the checkout for state. `inventor-on-linux paths` prints effective paths.
+
+From a graphical desktop session, create a new standalone prefix and install:
 
 ```bash
-inventor-on-linux register-runner
+inventor-on-linux init-prefix
 inventor-on-linux prepare-media /absolute/path/to/extracted-media
 inventor-on-linux install --dry-run
 inventor-on-linux install
@@ -62,4 +73,6 @@ inventor-on-linux setup-browser
 inventor-on-linux launch
 ```
 
-先にBottlesで専用Prefixを初期化し、Runner・DXVK等を設定してください。詳しい条件と制約はルートのREADMEを参照してください。パッケージ更新後はブラウザ連携の`setup-browser`を再実行し、古いストアパスを更新してください。
+`init-prefix` uses matching stock Wine to create a 64-bit Windows 10 prefix, then installs DXVK. It refuses nonempty directories. For an existing dedicated prefix, skip initialization and use `setup-dxvk` if needed after closing its applications. Only Bottles users need the optional `register-runner` command.
+
+See the root [README](../README.md) for media requirements, compatibility limitations, and the distinction between the tested Bottles environment and the standalone setup path. Run `setup-browser` again after package upgrades to refresh desktop callback paths.
