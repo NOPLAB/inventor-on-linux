@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: MIT */
+#include <windows.h>
+#include <stdio.h>
+#include <string.h>
+static int repair;
+static BOOL CALLBACK child(HWND h,LPARAM unused){RECT r;char c[128];GetWindowRect(h,&r);GetClassNameA(h,c,sizeof(c));if(IsWindowVisible(h))printf(" child=%p %s rect=%ld,%ld %ldx%ld\n",h,c,r.left,r.top,r.right-r.left,r.bottom-r.top);return TRUE;}
+static BOOL CALLBACK top(HWND h,LPARAM unused){WCHAR t[512];char title[2048],c[128];RECT w,r;GetWindowTextW(h,t,512);WideCharToMultiByte(CP_UTF8,0,t,-1,title,sizeof(title),NULL,NULL);if(!strstr(title,"Autodesk Inventor Professional"))return TRUE;GetWindowRect(h,&w);GetClientRect(h,&r);GetClassNameA(h,c,sizeof(c));printf("MAIN=%p class=%s window=%ld,%ld %ldx%ld client=%ldx%ld dpi=%u style=%08lx\n",h,c,w.left,w.top,w.right-w.left,w.bottom-w.top,r.right,r.bottom,GetDpiForWindow(h),GetWindowLongW(h,GWL_STYLE));HRGN region=CreateRectRgn(0,0,0,0);RECT box;int kind=GetWindowRgn(h,region);GetRgnBox(region,&box);printf(" region kind=%d box=%ld,%ld %ldx%ld\n",kind,box.left,box.top,box.right-box.left,box.bottom-box.top);DeleteObject(region);EnumChildWindows(h,child,0);if(repair==2){SendMessageW(h,WM_SIZE,IsZoomed(h)?SIZE_MAXIMIZED:SIZE_RESTORED,MAKELPARAM(r.right,r.bottom));RedrawWindow(h,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_UPDATENOW);puts("Sent size notification");}else if(repair){SetWindowPos(h,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);RedrawWindow(h,NULL,NULL,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_UPDATENOW|RDW_FRAME);puts("Recalculated frame and invalidated drawing");}return TRUE;}
+int main(int argc,char **argv){repair=argc>1?(!strcmp(argv[1],"--size-signal")?2:1):0;SetProcessDPIAware();EnumWindows(top,0);return 0;}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+<assemblyIdentity name="Inventor.Threading.Repro" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
+<file name="FEA_Application_Common.dll">
+<comClass clsid="{E4E2FE54-5A90-4006-AC58-9E11DE19817B}" threadingModel="free"/>
+</file>
+</assembly>

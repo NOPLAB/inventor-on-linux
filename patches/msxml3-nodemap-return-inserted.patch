@@ -1,0 +1,26 @@
+--- a/dlls/msxml3/nodemap.c
++++ b/dlls/msxml3/nodemap.c
+@@ -179,11 +179,23 @@
+ static HRESULT WINAPI xmlnodemap_setNamedItem(IXMLDOMNamedNodeMap *iface, IXMLDOMNode *newItem, IXMLDOMNode **namedItem)
+ {
+     xmlnodemap *map = impl_from_IXMLDOMNamedNodeMap(iface);
++    HRESULT hr;
+ 
+     TRACE("%p, %p, %p.\n", iface, newItem, namedItem );
+ 
+-    return map->funcs->set_named_item(map->node, newItem, namedItem);
++    if (namedItem)
++        *namedItem = NULL;
++
++    /* NamedNodeMap returns the inserted attribute. The underlying helper also
++     * implements Element.setAttributeNode, which returns the replaced one. */
++    hr = map->funcs->set_named_item(map->node, newItem, NULL);
++    if (SUCCEEDED(hr) && namedItem)
++    {
++        IXMLDOMNode_AddRef(newItem);
++        *namedItem = newItem;
++    }
++    return hr;
+ }
+ 
+ static HRESULT WINAPI xmlnodemap_removeNamedItem(IXMLDOMNamedNodeMap *iface, BSTR name, IXMLDOMNode **namedItem)

@@ -1,0 +1,41 @@
+--- a/dlls/wintrust/wintrust_main.c
++++ b/dlls/wintrust/wintrust_main.c
+@@ -667,6 +667,16 @@
+     LONG err = ERROR_SUCCESS;
+     WINTRUST_DATA *actionData = ActionData;
+ 
++    /* UNSAFE experiment: report success without implementing BLOB trust.
++     * Other inputs still run the provider to populate signer/state metadata.
++     */
++    if (!ActionID || !ActionData || actionData->dwUnionChoice == WTD_CHOICE_BLOB)
++    {
++        WARN("inventor-unsafe: bypassing BLOB/empty WinVerifyTrust input\n");
++        SetLastError(ERROR_SUCCESS);
++        return ERROR_SUCCESS;
++    }
++
+     TRACE("(%p, %s, %p)\n", hwnd, debugstr_guid(ActionID), ActionData);
+     dump_wintrust_data(ActionData);
+ 
+@@ -709,9 +719,18 @@
+         }
+     }
+ 
+-    if (err) SetLastError(err);
+-    TRACE("returning %08lx\n", err);
+-    return err;
++    {
++        WCHAR preserve_errors[2];
++        if (GetEnvironmentVariableW(L"INVENTOR_WINTRUST_PRESERVE_FILE_ERRORS", preserve_errors, 2)
++                && preserve_errors[0] == '1')
++        {
++            if (err) SetLastError(err);
++            return err;
++        }
++    }
++    WARN("inventor-unsafe: returning success after provider result %08lx\n", err);
++    SetLastError(ERROR_SUCCESS);
++    return ERROR_SUCCESS;
+ }
+ 
+ /***********************************************************************
