@@ -46,3 +46,18 @@ A full clean Inventor installation, browser sign-in, and GUI session in this new
 standalone prefix have not been tested. The Inventor feature results above were
 obtained in the existing Bottles-managed prefix. Other frontends and GPUs remain
 untested.
+
+## Native deb package
+
+Tested on 2026-11-12 in fresh Ubuntu 24.04 and Debian 13 containers with Xvfb
+and no Nix:
+
+- APT installed the local `amd64` deb and its declared runtime dependencies.
+- `init-prefix` created a Windows 10 prefix using the bundled Wine Staging 11.8.
+- Both architectures of the installed DXVK DLLs matched the bundled payloads.
+- The existing MSXML attribute regression test passed all four cases as both
+  64-bit and 32-bit Windows executables, for eight successful cases in total.
+
+The native package's Inventor installation, authentication, GPU rendering, and
+analysis have not been tested. These checks cover package installation, prefix
+initialization, and the MSXML compatibility fix.

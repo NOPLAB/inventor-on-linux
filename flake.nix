@@ -8,7 +8,7 @@
       base = pkgs.wineWow64Packages.staging;
       trustDlls = base.overrideAttrs (old: {
         pname = "inventor-unsafe-wintrust";
-        patches = (old.patches or []) ++ [ ./patches/0001-wintrust-always-success.patch
+        patches = (old.patches or []) ++ [ ./patches/wintrust-bypass-verification.patch
           ./patches/comctl32-statusbar-erase-background.patch
           ./patches/ntdll-actctx-threadingmodel-case.patch
           ./patches/rpcrt4-ndrstubcall3.patch

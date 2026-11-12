@@ -30,6 +30,10 @@ nix profile add .#inventor-on-linux
 
 Alternatively, run `./result-package/bin/inventor-on-linux` or `nix run . --` in place of `inventor-on-linux`. See [the Nix package guide](nix/README.md) for flake inputs, NixOS, Home Manager, and individual outputs.
 
+## Debian and Ubuntu packages
+
+For a deb package that runs without Nix, see the [Debian package guide](packaging/debian/README.md). It includes a native Wine build and the setup dependencies.
+
 ## Configure a dedicated Wine prefix
 
 The default prefix is `$XDG_DATA_HOME/inventor-on-linux/prefix`, or `~/.local/share/inventor-on-linux/prefix`. `INVENTOR_PREFIX` overrides it; otherwise an existing `WINEPREFIX` environment variable is respected.
@@ -149,4 +153,4 @@ This stops Wine processes belonging to that prefix and restores backed-up `wintr
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for validation commands. Logs, models, media, and local settings are excluded from Git. Remove authentication URLs, tokens, and serial numbers from bug reports.
 
-Original toolkit code is licensed under [MIT](LICENSE). **Patches modifying Wine are LGPL-2.1-or-later.** The imported installation tools retain their MIT notices. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [patch provenance](patches/UPSTREAM.md).
+Original toolkit code is licensed under [MIT](LICENSE). **Patches modifying Wine are LGPL-2.1-or-later.** The imported installation tools retain their MIT notices. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [patch provenance](patches/README.md).

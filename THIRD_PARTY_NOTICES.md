@@ -5,7 +5,7 @@ licensed; see [LICENSE](LICENSE). This grant does not relicense third-party code
 
 | Component | License | Source / notice |
 | --- | --- | --- |
-| `patches/*.patch`, including locally authored Wine changes | LGPL-2.1-or-later, as modifications of Wine | [COPYING.LIB](patches/COPYING.LIB), [patch provenance](patches/UPSTREAM.md) |
+| `patches/*.patch`, including locally authored Wine changes | LGPL-2.1-or-later, as modifications of Wine | [COPYING.LIB](patches/COPYING.LIB), [patch provenance](patches/README.md) |
 | `vendor/inventor-linux/` | MIT, retaining original copyright notices | [LICENSE](vendor/inventor-linux/LICENSE), [pinned commit](vendor/inventor-linux/UPSTREAM_COMMIT) |
 | Wine and Wine Staging runtime fetched by Nix | LGPL-2.1-or-later and notices shipped with their sources | Nixpkgs source pin in `flake.lock`; Wine derivation in `flake.nix` |
 | Other Nix dependencies, including IPAex fonts | Respective upstream licenses | Fetched by Nix; not relicensed or vendored here |
